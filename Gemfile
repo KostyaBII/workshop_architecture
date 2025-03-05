@@ -20,6 +20,8 @@ gem 'rubyzip', require: 'zip'
 # Управление бизнес-логикой
 gem 'dry-initializer'
 gem 'dry-types'
+gem 'kaminari'
+gem 'alba'
 
 # Конфигурирование приложения
 gem 'config'
