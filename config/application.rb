@@ -46,5 +46,9 @@ module Library
 
     # Don't generate system test files.
     config.generators.system_tests = nil
+
+    config.autoload_lib(ignore: %w[assets tasks])
+
+     Mongoid.load!('./config/mongoid.yml')
   end
 end

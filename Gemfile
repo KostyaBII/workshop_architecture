@@ -5,6 +5,8 @@ gem 'puma', '>= 6.5.0'
 
 # Базы данных
 gem 'pg'
+gem 'mongoid', '~> 8.0'
+gem 'bson_ext'
 
 # Многопоточное выполнение
 gem 'parallel'
@@ -21,6 +23,7 @@ gem 'rubyzip', require: 'zip'
 gem 'dry-initializer'
 gem 'dry-types'
 gem 'kaminari'
+gem 'kaminari-mongoid'
 gem 'alba'
 
 # Конфигурирование приложения
