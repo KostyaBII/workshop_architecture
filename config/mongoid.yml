@@ -1,0 +1,18 @@
+development:
+  # Configure available database clients. (required)
+  clients:
+    default:
+      database: library_development
+      hosts:
+        - mongodb:27017
+   
+test:
+  clients:
+    default:
+      database: library_test
+      hosts:
+        - mongodb:27017
+      options:
+        read:
+          mode: :primary
+        max_pool_size: 1
