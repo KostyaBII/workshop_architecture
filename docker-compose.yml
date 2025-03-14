@@ -1,9 +1,78 @@
+x-server-volumes:
+  &server-volumes
+  - .:/rails
+  - vendor_bundle:/app/vendor/bundle
+  - ~/.bash_history:/root/.bash_history
+  - ~/.irbrc:/root/.irbrc
+
+x-base-service: &base-service
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: ruby-karafka
+  environment:
+    KARAFKA_BOOT_FILE: 'config/karafka.rb'
+    APP_HOST: ${APP_HOST}
+    KAFKATRY_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+    SECRET_KEY_BASE: dummy_secret_key_base
+    POSTGRES_HOST: db
+    POSTGRES_USER: 'postgres'
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    RAILS_ENV: development
+  volumes: *server-volumes
+  stdin_open: true
+  tty: true
+
 services:
+  redpanda:
+    image: redpandadata/redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://redpanda:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr redpanda:8082
+    ports:
+      - 8081:8081
+      - 8082:8082
+      - 9092:9092
+      - 29092:29092
+
+  console:
+    image: docker.redpanda.com/redpandadata/console
+    restart: on-failure
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:29092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda:8081"]
+        connect:
+          enabled: true
+          clusters:
+            - name: datagen
+              url: http://connect:8083
+    ports:
+      - 8088:8080
+    depends_on:
+      - redpanda
+
+  karafka:
+    <<: *base-service
+    command: bundle exec karafka server
+    
   db:
-    image: postgres:17
+    image: postgres:17 #postgres:13.4
     environment:
       POSTGRES_USER: 'postgres'
-      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - db:/var/lib/postgresql/data
   web:
@@ -20,6 +89,7 @@ services:
              bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
       - .:/rails
+      # - ${PWD}/config/karafka.rb:/rails/karafka.rb
       - "$DOCKER_COMPOSE_ARCHIVE_FOLDER:/rails/db/data"
     networks:
       - default
@@ -32,7 +102,7 @@ services:
       PAGER: 'more'
       POSTGRES_HOST: 'db'
       POSTGRES_USER: 'postgres'
-      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   mongodb:
     image: mongo:6.0
     container_name: mongodb
@@ -48,3 +118,5 @@ services:
       - "27017:27017"
 volumes:
   db:
+  vendor_bundle:
+    driver: local
